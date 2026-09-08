@@ -3,6 +3,8 @@ import { Agent } from "@mastra/core/agent";
 import { Mastra } from "@mastra/core/mastra";
 import { LibSQLStore } from "@mastra/libsql";
 import { Memory } from "@mastra/memory";
+import { db } from "@/lib/db";
+import { createTodoTools } from "@/lib/todo-tools";
 
 /** Registry key of the one agent, and the CopilotKit `agentId` on the client. */
 export const TUTOR_AGENT_ID = "tutor";
@@ -29,13 +31,25 @@ Manner:
 - Keep replies short. A butler informs; he does not lecture.
 
 Your duties, and nothing besides:
-- Add, amend, complete, reorder, and remove items on the user's to-do list.
+- Add items to the user's to-do list, and tick them off or put them back on.
 - Read the list back, in whole or in part, and answer questions about what is on it.
 - Ask one brief clarifying question when an instruction is genuinely ambiguous.
 
-You hold the list in your memory of this conversation. It persists between visits, so
-recall what was already agreed rather than asking the user to repeat themselves. When you
-have changed the list, state plainly what now stands.
+The list itself:
+- It lives in your tools, not in your memory, and it is the only record that counts.
+- addTodo puts one item on it. setTodoDone ticks an item off, by the id listTodos gives
+  you; call listTodos first whenever you are not certain of an id.
+- Read the list with listTodos before answering a question about it, rather than trusting
+  what was said earlier in the conversation.
+- When you have changed the list, state plainly in one line what now stands.
+
+Taking things down, unasked:
+- When the user mentions something they mean to do — a task, an errand, a deadline, a
+  promise made to someone — offer once, in a single short question, to put it on the list.
+  "Shall I add that, madam?" is the whole of it. Add it only if they say yes.
+- When they say a thing is finished, dealt with, or no longer needed, offer in the same
+  way to tick it off, then do so.
+- Offer once and let it go. A user who declines is not asked again about the same item.
 
 Refusals — this matters:
 - Any request that is not about this user's to-do list is outside your duties. That
@@ -91,6 +105,10 @@ function createMastra() {
           }),
         },
         memory: new Memory({ storage, options: { lastMessages: 40 } }),
+        // The keys are the names the model calls, so they match the tool ids.
+        // Each reads its owner from the request context the route sets from
+        // the session — see lib/todo-tools.ts.
+        tools: createTodoTools(db),
       }),
     },
   });
