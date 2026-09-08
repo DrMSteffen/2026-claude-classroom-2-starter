@@ -14,18 +14,16 @@ AI tutoring web app on Next.js 16 App Router + React 19 + Tailwind v4: a Mastra 
 
 ## Commands
 
-- `npm run dev` / `npm run build` / `npm run start`.
 - `npm run lint` is `biome check` and `npm run format` is `biome format --write` — Biome only, so never add ESLint or Prettier config.
-- `npm test` (Vitest, single run), `npm run test:watch`, `npm run test:e2e` (Playwright).
 - `npm run db:generate` writes a migration from the schema and `npm run db:migrate` applies it to `DATABASE_URL`.
 - `npm run auth:generate` regenerates `lib/auth-schema.ts` from the Better Auth config; follow it with `db:generate` + `db:migrate`.
 
 ## App code — `app/layout.tsx`, `app/page.tsx`, `components/`
 
 - `PageProps<'/route'>` and `LayoutProps<'/route'>` are globals generated into `.next/types`, so a typecheck on a clean checkout fails until `next dev` or `next build` has run once.
+- TypeScript 7 has no JavaScript compiler API, so `next build` type-checks by shelling out to the project-local `tsc` (`experimental.useTypeScriptCli`, on by default) — turning it off makes the build exit.
 - Import across the repo with the `@/*` alias (rooted at this directory), not deep relative paths.
-- `components/ui/` holds the presentational primitives (`auth-card`, `field`, `button`, `form-error`, `page-header`); extend one instead of repeating its class string.
-- `/` is the chat page: a Server Component that gates on the session, then renders `PageHeader` plus the client-only `components/chat.tsx`.
+- `components/ui/` holds the presentational primitives; extend one instead of repeating its class string.
 
 ## Persistence — `lib/db.ts`, `lib/schema.ts`, `lib/auth-schema.ts`, `drizzle.config.ts`, `drizzle/`
 
@@ -56,12 +54,13 @@ AI tutoring web app on Next.js 16 App Router + React 19 + Tailwind v4: a Mastra 
 - The CopilotKit Inspector is on by default in development (`enableInspector` stays unset; `showDevConsole` is deprecated and controls nothing). Its `<cpk-web-inspector>` launcher would sit on the header's sign-out button, so `app/globals.css` shifts the host down with a margin.
 - `OPENROUTER_BASE_URL` (optional, see `.env.example`) routes the model traffic through a local proxy; with a custom `url` Mastra's model router no longer reads `OPENROUTER_API_KEY` itself, which is why `lib/tutor.ts` passes `apiKey` explicitly.
 - Threads only persist inside Mastra's memory — the runtime runs on the default `InMemoryAgentRunner`, so the browser's own transcript still starts empty on reload.
-- `@copilotkit/runtime` drags in a zod-3 dependency tree that conflicts with Better Auth's zod 4, hence `.npmrc`'s `legacy-peer-deps=true`; drop it and `npm install` fails.
+- `@copilotkit/runtime` drags in a zod-3 dependency tree that conflicts with Better Auth's zod 4, and `better-auth` and `@copilotkit/channels-core` both cap their optional `vitest` peer at 4 — hence `.npmrc`'s `legacy-peer-deps=true`; drop it and `npm install` fails.
 
 ## Tests — `tests/unit` (Vitest), `tests/e2e` (Playwright)
 
 - Vitest is jsdom + Testing Library and only picks up `tests/unit/**/*.test.{ts,tsx}`; async Server Components are unsupported there, so cover those with e2e instead.
 - `vitest.config.mts` resolves `@/*` through `resolve.tsconfigPaths` — the `vite-tsconfig-paths` plugin the Next.js guide recommends is deprecated, so don't reinstall it.
+- Vitest 5 takes `vite` as a peer rather than a dependency, and `legacy-peer-deps` installs no peers, so `vite` is a direct devDependency here.
 - Playwright runs Chromium only against its own `next dev` on port 3100 (override with `E2E_PORT`).
 - `next dev` refuses to start twice against one dist dir, so `next.config.ts` reads `NEXT_DIST_DIR` and the e2e server sets it to `.next-e2e`; that dir also needs a `tsconfig.json` include entry, which `next dev` adds itself.
 - `tests/unit/db.test.ts` and `tests/unit/auth.test.ts` opt out of jsdom with a `// @vitest-environment node` first line and migrate a temp file, so they never touch `data/app.db`.
@@ -81,7 +80,7 @@ AI tutoring web app on Next.js 16 App Router + React 19 + Tailwind v4: a Mastra 
 
 ## Tooling — `biome.json`
 
-- Biome ignores `.claude/` because its vendored skill assets fail `biome check .`, and `drizzle/` because drizzle-kit's generated JSON does not match its formatter.
+- Biome ignores `.claude/` because its vendored skill assets fail `biome check .`, `drizzle/` because drizzle-kit's generated JSON does not match its formatter, and `public/` because the create-next-app SVGs there trip `a11y/noSvgWithoutTitle`.
 - `npm run format` skips assist actions such as import sorting; use `npx biome check --write <path>` to fix those.
 
 ## Maintenance — for you, the agent
