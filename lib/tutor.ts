@@ -51,10 +51,11 @@ Refusals — this matters:
 // `next dev` re-evaluates modules on every hot reload; without the cache each
 // reload would leak another libSQL connection (same reason as lib/db.ts).
 const globalForTutor = globalThis as typeof globalThis & {
+  tutorStorage?: LibSQLStore;
   mastra?: Mastra<{ [TUTOR_AGENT_ID]: Agent }>;
 };
 
-function createMastra() {
+function tutorStorage() {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error("DATABASE_URL is not set — see .env");
@@ -63,7 +64,12 @@ function createMastra() {
   // The same SQLite file Drizzle uses; Mastra creates and owns its own
   // `mastra_*` tables in it. Passed to both the instance and the Memory so
   // neither silently falls back to the non-durable in-memory store.
-  const storage = new LibSQLStore({ id: "tutor-memory", url });
+  globalForTutor.tutorStorage ??= new LibSQLStore({ id: "tutor-memory", url });
+  return globalForTutor.tutorStorage;
+}
+
+function createMastra() {
+  const storage = tutorStorage();
 
   return new Mastra({
     storage,
@@ -90,6 +96,14 @@ function createMastra() {
   });
 }
 
-globalForTutor.mastra ??= createMastra();
+function cachedMastra() {
+  globalForTutor.mastra ??= createMastra();
+  return globalForTutor.mastra;
+}
 
-export const mastra = globalForTutor.mastra;
+// Only the connection is cached across hot reloads; the agent is rebuilt on
+// every module evaluation, so editing `instructions` above takes effect on
+// reload rather than needing a dev-server restart. A production build never
+// reloads, so it keeps the one cached instance it builds on first import.
+export const mastra =
+  process.env.NODE_ENV === "production" ? cachedMastra() : createMastra();
