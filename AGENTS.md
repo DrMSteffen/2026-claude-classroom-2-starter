@@ -63,6 +63,10 @@ AI tutoring web app on Next.js 16 App Router + React 19 + Tailwind v4: a Mastra 
 - Threads only persist inside Mastra's memory — the runtime runs on the default `InMemoryAgentRunner`, so the browser's own transcript still starts empty on reload.
 - `components/todos-sidebar.tsx` is a Server Component passed into the client `Chat` as a prop, because it has to render inside the CopilotKit provider.
 - It is read-only by design — the agent is the only write path — and `components/agent-refresh.tsx` binds `useAgent` to the same shared registry instance `CopilotChat` resolves by `agentId`, then calls `router.refresh()` on the falling edge of `agent.isRunning`.
+- Its header keeps the item count on the left because `app/globals.css` parks the dev-only Inspector launcher in the top-right corner, which is where that header's right edge now is.
+- `components/tool-call-renderer.tsx` draws every tool call into the transcript through `useRenderTool`'s wildcard `"*"` overload — nothing registers a name-matched renderer for it to fall back from, so it catches all of them, and the wildcard needs no argument schema, which is what keeps zod out of the client bundle.
+- The wildcard's render props are typed `any`, so `components/tool-call-summary.ts` declares the shape and turns a call into one line of English; a tool result arrives as an opaque string, so every branch there falls back rather than rendering nothing.
+- `ToolCallStatus` is not on the `@copilotkit/react-core/v2` surface, but `useRenderTool` reports `status` as the plain strings `inProgress` / `executing` / `complete`, so nothing needs to reach into `@copilotkit/core` for the enum.
 - `@copilotkit/runtime` drags in a zod-3 dependency tree that conflicts with Better Auth's zod 4, and `better-auth` and `@copilotkit/channels-core` both cap their optional `vitest` peer at 4 — hence `.npmrc`'s `legacy-peer-deps=true`; drop it and `npm install` fails.
 - `zod` is a direct dependency on that hoisted zod-3 line (Better Auth keeps its zod 4 nested), and it is the one the tool schemas import; `@mastra/core` peers on `^3.25.0 || ^4.0.0` and is happy either way.
 
@@ -78,8 +82,10 @@ AI tutoring web app on Next.js 16 App Router + React 19 + Tailwind v4: a Mastra 
 - `tests/e2e/auth.spec.ts` does hit `data/app.db`, so it signs up a `Date.now()`-stamped email; `playwright.config.ts` also overrides `BETTER_AUTH_URL` onto its own port.
 - `tests/unit/copilotkit-route.test.ts` mocks `@/lib/auth`, `@/lib/tutor`, and both CopilotKit/AG-UI modules, so it covers the 401 gate and the `resourceId` wiring without a model call.
 - `tests/unit/todo-tools.test.ts` runs the tool executors against a migrated temp file and is where per-user isolation is pinned down, including user B calling `setTodoDone` with user A's item id.
+- `components/tool-call-summary.ts` is a plain `.ts` module rather than part of the renderer so `tests/unit/tool-call-summary.test.ts` can cover its branches without a CopilotKit provider.
 - `Tool.execute` is typed optional and its return type includes the request-context validation error, so that file casts once in a `call` helper rather than at every call site.
 - A `tests/e2e/*.llm.spec.ts` really calls OpenRouter and costs money, so `playwright.config.ts` ignores those files unless `E2E_LLM` is set — which `npm run test:e2e:llm` does, and that run matches nothing else.
+- That spec asserts the rendered tool-call summary and not just the row, because it is the only place the real serialized tool result is checked against what `components/tool-call-summary.ts` expects to parse.
 
 ## Styling — `app/globals.css`, `postcss.config.mjs`
 

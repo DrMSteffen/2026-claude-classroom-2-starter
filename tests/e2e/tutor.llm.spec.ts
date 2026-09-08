@@ -30,4 +30,11 @@ test("the tutor adds an item and the sidebar shows it", async ({ page }) => {
   await expect(sidebar.getByText("buy milk", { exact: false })).toBeVisible({
     timeout: 120_000,
   });
+
+  // The transcript shows the call that did it. Asserting on the summary and
+  // not just the row is what pins down that the real serialized tool result
+  // still parses the way components/tool-call-summary.ts expects.
+  await expect(
+    page.locator('[data-testid="tool-call"][data-tool="addTodo"]'),
+  ).toContainText("added \u201cbuy milk\u201d");
 });

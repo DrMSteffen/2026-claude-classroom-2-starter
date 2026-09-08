@@ -4,6 +4,7 @@ import { CopilotChat, CopilotKit } from "@copilotkit/react-core/v2";
 import "@copilotkit/react-core/v2/styles.css";
 import type { ReactNode } from "react";
 import { AgentRefresh } from "@/components/agent-refresh";
+import { ToolCallRenderer } from "@/components/tool-call-renderer";
 
 /**
  * `threadId` is handed down from the server-rendered session rather than picked
@@ -29,6 +30,7 @@ export function Chat({
     // `showDevConsole` is deprecated and no longer controls it either way.
     // app/globals.css moves its launcher off the header's sign-out button.
     <CopilotKit runtimeUrl="/api/copilotkit" credentials="include">
+      <ToolCallRenderer />
       <div className="flex h-full">
         <div className="min-w-0 flex-1">
           <CopilotChat

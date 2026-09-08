@@ -12,7 +12,9 @@ export async function TodosSidebar({ userId }: { userId: string }) {
 
   return (
     <div className="flex h-full flex-col" data-testid="todos-sidebar">
-      <div className="flex items-baseline justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+      {/* Left-aligned: app/globals.css parks the dev-only Inspector launcher
+          in the top-right corner, which is where this header's right edge is. */}
+      <div className="flex items-baseline gap-2 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
           The list
         </h2>
