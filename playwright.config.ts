@@ -5,8 +5,14 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const baseURL = `http://localhost:${PORT}`;
 
+// A `*.llm.spec.ts` run costs real OpenRouter calls, so the default suite never
+// sees one and `npm run test:e2e:llm` runs nothing else.
+const llm = !!process.env.E2E_LLM;
+
 export default defineConfig({
   testDir: "./tests/e2e",
+  testMatch: llm ? "**/*.llm.spec.ts" : undefined,
+  testIgnore: llm ? undefined : "**/*.llm.spec.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
